@@ -5,8 +5,11 @@ const fs = require('fs');
 var options = {
     hostname: "api.football-data.org",
     port: 80,
-    path: "/v1/fixtures?timeFrame=n30",
-    method: "GET"
+    path: "/v1/fixtures?timeFrame=n30&league=BL1",
+    method: "GET",
+    headers: {
+        'X-Auth-Token': 'dc6856ad360c478bba5e18daafe63818'
+    }
 }
 
 var req = http.request(options, function(res){
@@ -30,8 +33,10 @@ var req = http.request(options, function(res){
         var responseObject = JSON.parse(responseBody);
         var fixtures = responseObject.fixtures;
         console.log(fixtures.length);
-        console.log(fixtures[0]);
-        fs.writeFile("george-washington.html", responseBody, function(err) {
+        if(fixtures.length > 0){
+            console.log(fixtures[0]);
+        }
+        fs.writeFile("test.json", responseBody, function(err) {
             if(err){
                 throw err;
             }
