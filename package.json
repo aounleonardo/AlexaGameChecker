@@ -1,0 +1,14 @@
+{
+  "name": "GameChecker",
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "Leonardo Aoun",
+  "license": "MIT",
+  "dependencies": {
+    "alexa-sdk": "^1.0.11",
+    "aws-lambda-mock-context": "^3.1.1",
+    "chai": "^4.1.0",
+    "jquery": "^3.2.1",
+    "mocha": "^3.4.2"
+  }
+}
