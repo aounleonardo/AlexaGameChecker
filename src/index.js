@@ -23,6 +23,85 @@ var STOP_MESSAGE = "Goodbye!";
 //=========================================================================================================================================
 //Editing anything below this line might break your skill.
 //=========================================================================================================================================
+
+const host = "api.football-data.org";
+const apiKey = "dc6856ad360c478bba5e18daafe63818";
+const querystring = require('querystring');
+
+function performRequest(endpoint, method, data, success) {
+    var dataString = JSON.stringify(data);
+    var headers = {};
+
+    if (method == 'GET') {
+        endpoint += '?' + querystring.stringify(data);
+        headers = {
+            'X-Auth-Token': apiKey
+        };
+    }
+    else {
+        headers = {
+            'Content-Type': 'application/json',
+            'Content-Length': dataString.length,
+            'X-Auth-Token': apiKey
+        };
+    }
+
+    var options = {
+        hostname: "api.football-data.org",
+        port: 80,
+        path: '/v1/fixtures?timeFrame=n30&league=BL1',
+        method: 'GET'
+    }
+    console.log("d");
+    console.log(options);
+
+    var req = http.request(options, function(res){
+
+        var responseBody = "";
+
+        console.log("Response from server started.");
+        console.log(`Server Status: ${res.statusCode}`);
+
+        res.setEncoding("UTF-8");
+        // res.once("data", function(chunk){
+        //     console.log(chunk);
+        // });
+
+        res.on("data", function(chunk){
+            responseBody += chunk;
+        });
+
+        res.on("end", function() {
+            console.log("c");
+            var responseObject = JSON.parse(responseBody);
+            var fixtures = responseObject.fixtures;
+            success("b");
+            if(fixtures.length > 0){
+                success(fixtures[0]);
+            }
+
+            fs.writeFile("test.json", responseBody, function(err) {
+                if(err){
+                    throw err;
+                }
+                console.log("File Downloaded");
+            });
+        });
+        res.on("error", function(err) {
+            console.log(`problem with request: ${err.message}`);
+        });
+    });
+    req.write(dataString);
+    req.end();
+}
+function getGamesToday(callback) {
+    callback("qwerty");
+    performRequest('/v1/fixtures', 'GET', {'timeFrame': 'n30', 'league': 'BL1'}, function (a) {
+        console.log("uiop");
+    });
+}
+
+
 exports.handler = function(event, context, callback) {
     var alexa = Alexa.handler(event, context);
     alexa.APP_ID = APP_ID;
@@ -30,52 +109,42 @@ exports.handler = function(event, context, callback) {
     alexa.execute();
 };
 
-function blah(callback){
+function simple(event, context) {
+
+    var body='';
+    var jsonObject = JSON.stringify(event);
+
     var options = {
         host: 'api.football-data.org',
-        path: '/v1/competitions/?season=2017',
+        path: '/v1/fixtures?timeFrame=n30&league=BL1',
         method: 'GET',
-        port: 80
     };
-    console.log("hola");
 
-    http.get("http://www.google.com", function(res) {
-        console.log("Got response: ");
-        fs.writeFile("test", "Hey there!", function(err) {
-            if(err) {
-                return console.log(err);
-            }
-
-            console.log("The file was saved!");
+    var req = http.get('http://api.football-data.org/v1/fixtures?timeFrame=n30&league=BL1', function(res) {
+        console.log("statusCode: ", res.statusCode);
+        res.on('data', function (chunk) {
+            body += chunk;
         });
+        res.on('end', function(){
+            console.log(body);
+        });
+        context.succeed('Blah');
     });
+    // var req = http.request(options, function(res) {
+    //     console.log("statusCode: ", res.statusCode);
+    //     res.on('data', function (chunk) {
+    //         body += chunk;
+    //     });
+    //     res.on('end', function(){
+    //         console.log(body);
+    //     });
+    //     context.succeed('Blah');
+    // });
 
-    var req = http.request(options, function(res) {
-        hey = "heyaa";
-        console.log("heya\n\n");
-        res.setEncoding('utf-8');
-
-        var responseString = '';
-
-        res.on('data', function(data) {
-            responseString += data;
-        });
-
-        res.on('end', function() {
-            var responseObject = JSON.parse(responseString);
-            if(responseString == null){
-                callback("booooo");
-            } else {
-                callback("baaaaa");
-            }
-            console.log(Object.keys(responseObject).length);
-        });
-    });
-
+    // req.write(jsonObject, function(err){
+    //     req.end();
+    // });
     req.end();
-    callback("qwerty");
-    callback("uiop");
-
 }
 
 var handlers = {
@@ -90,10 +159,21 @@ var handlers = {
         this.emit(':tellWithCard', speechOutput, SKILL_NAME, randomFact)
     },
     'TodayIntent': function () {
-        console.log("hello\n");
+        getGamesToday(function(a){
+            console.log("hey");
+            console.log(a);
+        });
         var speechOutput = "beautiful games today";
         this.emit(':tellWithCard', speechOutput, SKILL_NAME, speechOutput)
     },
+    // 'TodayIntent': function () {
+    //     getGamesToday(function(a){
+    //         console.log("hey");
+    //         console.log(a);
+    //     });
+    //     var speechOutput = "beautiful games today";
+    //     this.emit(':tellWithCard', speechOutput, SKILL_NAME, speechOutput)
+    // },
     'AMAZON.HelpIntent': function () {
         var speechOutput = HELP_MESSAGE;
         var reprompt = HELP_REPROMPT;
