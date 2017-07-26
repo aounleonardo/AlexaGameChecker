@@ -31,7 +31,7 @@ describe("Testing The FactIntent", function(){
                     "slots": {
                         "League": {
                             "name": "League",
-                            "value": "serie a"
+                            "value": "premier league"
                         }
                   }
                 }

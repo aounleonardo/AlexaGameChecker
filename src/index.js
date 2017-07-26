@@ -1,23 +1,30 @@
+const request = require('request');
+
 var leagues = {
     "bundesliga": {
         "nb_teams": "eighteen",
-        "champions": "bayern"
+        "champions": "bayern",
+        "code": "BL1"
     },
-    "barclays": {
+    "premier league": {
         "nb_teams": "twenty",
-        "champions": "chelsea"
+        "champions": "chelsea",
+        "code": "PL"
     },
     "serie a": {
         "nb_teams": "twenty",
-        "champions": "juventus"
+        "champions": "juventus",
+        "code": "SA"
     },
     "la liga": {
         "nb_teams": "twenty",
-        "champions": "real madrid"
+        "champions": "real madrid",
+        "code": "PD"
     },
     "ligue un": {
         "nb_teams": "twenty",
-        "champions": "monaco"
+        "champions": "monaco",
+        "code": "FL1"
     }
 }
 
@@ -136,16 +143,37 @@ function handleTodayIntentResponse(intent, session, callback){
         var speechOutput = "I personally don't follow this league, try one of these: bundesliga, barclays, serie a, la liga, ligue un";
         var reprompt = "Try asking about one of these: bundesliga, barclays, serie a, la liga, ligue un";
         var header = "Unknown League";
-    } else {
-        var nb_teams = leagues[league].nb_teams;
-        var champions = leagues[league].champions;
-        var speechOutput = "The champions of the " + league + " out of " + nb_teams + " teams are " + champions + ". Do you want to hear about more?";
-        var reprompt = "Do you want to hear about more?";
-        var header = league;
+        var shouldEndSession = false;
+        callback(session.attributes, buildSpeechletResponse(header, speechOutput, reprompt, shouldEndSession));
     }
 
-    var shouldEndSession = false;
-    callback(session.attributes, buildSpeechletResponse(header, speechOutput, reprompt, shouldEndSession));
+    var code = leagues[league].code;
+    var speechOutput = "No teams are playing today in the " + league;
+    getJSON(code, function(data){
+        if(data != "ERROR"){
+            speechOutput = data;
+        }
+        callback(session.attributes, buildSpeechletResponseWithoutCard(speechOutput, "", true))
+    });
+}
+
+function getJSON(code, callback){
+    request.get(url(code), function(error, response, body){
+        var d = JSON.parse(body);
+        var count = d.count;
+        if(count > 0){
+            var teamA = d.fixtures[0].homeTeamName;
+            var teamB = d.fixtures[0].awayTeamName;
+            var output = teamA + " are playing against " + teamB;
+            callback(output);
+        } else {
+            callback("ERROR");
+        }
+    });
+}
+
+function url(code){
+    return "http://api.football-data.org/v1/fixtures?timeFrame=n30&league=" + code;
 }
 
 function handleYesResponse(intent, session, callback){
