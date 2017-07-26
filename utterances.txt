@@ -1,0 +1,7 @@
+TodayIntent {League}
+TodayIntent What games today are played in the {League}
+TodayIntent What {League} game should I watch today
+TodayIntent Who is playing today in the {League}
+
+AMAZON.HelpIntent How do I use this app
+AMAZON.HelpIntent What should I say

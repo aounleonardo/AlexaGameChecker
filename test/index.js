@@ -27,8 +27,13 @@ describe("Testing The FactIntent", function(){
                 "locale": "en-US",
                 "timestamp": "2017-07-24T00:49:33Z",
                 "intent": {
-                  "name": "TodayIntent",
-                  "slots": {}
+                    "name": "TodayIntent",
+                    "slots": {
+                        "League": {
+                            "name": "League",
+                            "value": "serie a"
+                        }
+                  }
                 }
             },
             "version": "1.0"

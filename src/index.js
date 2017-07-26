@@ -1,188 +1,230 @@
-'use strict';
-const Alexa = require('alexa-sdk');
-const path = require('path');
-const facts = require('./facts');
-const calls = require('./foot/calls');
-const http = require('http');
-const fs = require('fs');
-
-//=========================================================================================================================================
-//TODO: The items below this comment need your attention.
-//=========================================================================================================================================
-
-//Replace with your app ID (OPTIONAL).  You can find this value at the top of your skill's page on http://developer.amazon.com.
-//Make sure to enclose your value in quotes, like this: var APP_ID = "amzn1.ask.skill.bb4045e6-b3e8-4133-b650-72923c5980f1";
-var APP_ID = undefined;
-
-var SKILL_NAME = "Game Checker";
-var GET_FACT_MESSAGE = "Here's your fact: ";
-var HELP_MESSAGE = "You can say tell me a space fact, or, you can say exit... What can I help you with?";
-var HELP_REPROMPT = "What can I help you with?";
-var STOP_MESSAGE = "Goodbye!";
-
-//=========================================================================================================================================
-//Editing anything below this line might break your skill.
-//=========================================================================================================================================
-
-const host = "api.football-data.org";
-const apiKey = "dc6856ad360c478bba5e18daafe63818";
-const querystring = require('querystring');
-
-function performRequest(endpoint, method, data, success) {
-    var dataString = JSON.stringify(data);
-    var headers = {};
-
-    if (method == 'GET') {
-        endpoint += '?' + querystring.stringify(data);
-        headers = {
-            'X-Auth-Token': apiKey
-        };
+var leagues = {
+    "bundesliga": {
+        "nb_teams": "eighteen",
+        "champions": "bayern"
+    },
+    "barclays": {
+        "nb_teams": "twenty",
+        "champions": "chelsea"
+    },
+    "serie a": {
+        "nb_teams": "twenty",
+        "champions": "juventus"
+    },
+    "la liga": {
+        "nb_teams": "twenty",
+        "champions": "real madrid"
+    },
+    "ligue un": {
+        "nb_teams": "twenty",
+        "champions": "monaco"
     }
-    else {
-        headers = {
-            'Content-Type': 'application/json',
-            'Content-Length': dataString.length,
-            'X-Auth-Token': apiKey
-        };
-    }
-
-    var options = {
-        hostname: "api.football-data.org",
-        port: 80,
-        path: '/v1/fixtures?timeFrame=n30&league=BL1',
-        method: 'GET'
-    }
-    console.log("d");
-    console.log(options);
-
-    var req = http.request(options, function(res){
-
-        var responseBody = "";
-
-        console.log("Response from server started.");
-        console.log(`Server Status: ${res.statusCode}`);
-
-        res.setEncoding("UTF-8");
-        // res.once("data", function(chunk){
-        //     console.log(chunk);
-        // });
-
-        res.on("data", function(chunk){
-            responseBody += chunk;
-        });
-
-        res.on("end", function() {
-            console.log("c");
-            var responseObject = JSON.parse(responseBody);
-            var fixtures = responseObject.fixtures;
-            success("b");
-            if(fixtures.length > 0){
-                success(fixtures[0]);
-            }
-
-            fs.writeFile("test.json", responseBody, function(err) {
-                if(err){
-                    throw err;
-                }
-                console.log("File Downloaded");
-            });
-        });
-        res.on("error", function(err) {
-            console.log(`problem with request: ${err.message}`);
-        });
-    });
-    req.write(dataString);
-    req.end();
-}
-function getGamesToday(callback) {
-    callback("qwerty");
-    performRequest('/v1/fixtures', 'GET', {'timeFrame': 'n30', 'league': 'BL1'}, function (a) {
-        console.log("uiop");
-    });
 }
 
+// Route the incoming request based on type (LaunchRequest, IntentRequest,
+// etc.) The JSON body of the request is provided in the event parameter.
+exports.handler = function (event, context) {
+    try {
+        console.log("event.session.application.applicationId=" + event.session.application.applicationId);
 
-exports.handler = function(event, context, callback) {
-    var alexa = Alexa.handler(event, context);
-    alexa.APP_ID = APP_ID;
-    alexa.registerHandlers(handlers);
-    alexa.execute();
+        /**
+         * Uncomment this if statement and populate with your skill's application ID to
+         * prevent someone else from configuring a skill that sends requests to this function.
+         */
+
+    if (event.session.application.applicationId !== "amzn1.ask.skill.dbefb9ef-f98f-4bc9-bd5f-9227973eeca9") {
+        context.fail("Invalid Application ID");
+     }
+
+        if (event.session.new) {
+            onSessionStarted({requestId: event.request.requestId}, event.session);
+        }
+
+        if (event.request.type === "LaunchRequest") {
+            onLaunch(event.request,
+                event.session,
+                function callback(sessionAttributes, speechletResponse) {
+                    context.succeed(buildResponse(sessionAttributes, speechletResponse));
+                });
+        } else if (event.request.type === "IntentRequest") {
+            onIntent(event.request,
+                event.session,
+                function callback(sessionAttributes, speechletResponse) {
+                    context.succeed(buildResponse(sessionAttributes, speechletResponse));
+                });
+        } else if (event.request.type === "SessionEndedRequest") {
+            onSessionEnded(event.request, event.session);
+            context.succeed();
+        }
+    } catch (e) {
+        context.fail("Exception: " + e);
+    }
 };
 
-function simple(event, context) {
+/**
+ * Called when the session starts.
+ */
+function onSessionStarted(sessionStartedRequest, session) {
+    // add any session init logic here
+}
 
-    var body='';
-    var jsonObject = JSON.stringify(event);
+/**
+ * Called when the user invokes the skill without specifying what they want.
+ */
+function onLaunch(launchRequest, session, callback) {
+    getWelcomeResponse(callback);
+}
 
-    var options = {
-        host: 'api.football-data.org',
-        path: '/v1/fixtures?timeFrame=n30&league=BL1',
-        method: 'GET',
+/**
+ * Called when the user specifies an intent for this skill.
+ */
+function onIntent(intentRequest, session, callback) {
+
+    var intent = intentRequest.intent
+    var intentName = intentRequest.intent.name;
+
+    // dispatch custom intents to handlers here
+    if(intentName == "TodayIntent"){
+        handleTodayIntentResponse(intent, session, callback);
+    } else if (intentName == "AMAZON.YesIntent") {
+        handleYesResponse(intent, session, callback);
+    } else if (intentName == "AMAZON.NoIntent") {
+        handleNoResponse(intent, session, callback);
+    } else if (intentName == "AMAZON.HelpIntent") {
+        handleGetHelpResponse(intent, session, callback);
+    } else if (intentName == "AMAZON.StopIntent") {
+        handleFinishSessionRequest(intent, session, callback);
+    } else if (intentName == "AMAZON.CancelIntent") {
+        handleFinishSessionRequest(intent, session, callback);
+    } else {
+        throw "Invalid intent"
+    }
+
+}
+
+/**
+ * Called when the user ends the session.
+ * Is not called when the skill returns shouldEndSession=true.
+ */
+function onSessionEnded(sessionEndedRequest, session) {
+
+}
+
+// ------- Skill specific logic -------
+
+function getWelcomeResponse(callback) {
+    var speechOutput = "Welcome to Game Checker, you can get info about these five leagues: bundesliga, barclays, serie a, la liga, ligue un";
+
+    var reprompt = "Which one do you like most? bundesliga, barclays, serie a, la liga, ligue un";
+
+    var header = "Game Checker!";
+
+    var shouldEndSession = false;
+
+    var sessionAttributes = {
+        "speechOutput": speechOutput,
+        "repromptText": reprompt
     };
 
-    var req = http.get('http://api.football-data.org/v1/fixtures?timeFrame=n30&league=BL1', function(res) {
-        console.log("statusCode: ", res.statusCode);
-        res.on('data', function (chunk) {
-            body += chunk;
-        });
-        res.on('end', function(){
-            console.log(body);
-        });
-        context.succeed('Blah');
-    });
-    // var req = http.request(options, function(res) {
-    //     console.log("statusCode: ", res.statusCode);
-    //     res.on('data', function (chunk) {
-    //         body += chunk;
-    //     });
-    //     res.on('end', function(){
-    //         console.log(body);
-    //     });
-    //     context.succeed('Blah');
-    // });
-
-    // req.write(jsonObject, function(err){
-    //     req.end();
-    // });
-    req.end();
+    callback(sessionAttributes, buildSpeechletResponse(header, speechOutput, reprompt, shouldEndSession));
 }
 
-var handlers = {
-    'LaunchRequest': function () {
-        this.emit('FactIntent');
-    },
-    'FactIntent': function () {
-        var factArr = facts.data;
-        var factIndex = Math.floor(Math.random() * factArr.length);
-        var randomFact = factArr[factIndex];
-        var speechOutput = GET_FACT_MESSAGE + randomFact;
-        this.emit(':tellWithCard', speechOutput, SKILL_NAME, randomFact)
-    },
-    'TodayIntent': function () {
-        getGamesToday(function(a){
-            console.log("hey");
-            console.log(a);
-        });
-        var speechOutput = "beautiful games today";
-        this.emit(':tellWithCard', speechOutput, SKILL_NAME, speechOutput)
-    },
-    // 'TodayIntent': function () {
-    //     getGamesToday(function(a){
-    //         console.log("hey");
-    //         console.log(a);
-    //     });
-    //     var speechOutput = "beautiful games today";
-    //     this.emit(':tellWithCard', speechOutput, SKILL_NAME, speechOutput)
-    // },
-    'AMAZON.HelpIntent': function () {
-        var speechOutput = HELP_MESSAGE;
-        var reprompt = HELP_REPROMPT;
-        this.emit(':ask', speechOutput, reprompt);
-    },
-    'AMAZON.CancelIntent': function () {
-        this.emit(':tell', STOP_MESSAGE);
-    },
-    'AMAZON.StopIntent': function () {
-        this.emit(':tell', STOP_MESSAGE);
+function handleTodayIntentResponse(intent, session, callback){
+    var league = intent.slots.League.value.toLowerCase();
+
+    if(!leagues[league]){
+        var speechOutput = "I personally don't follow this league, try one of these: bundesliga, barclays, serie a, la liga, ligue un";
+        var reprompt = "Try asking about one of these: bundesliga, barclays, serie a, la liga, ligue un";
+        var header = "Unknown League";
+    } else {
+        var nb_teams = leagues[league].nb_teams;
+        var champions = leagues[league].champions;
+        var speechOutput = "The champions of the " + league + " out of " + nb_teams + " teams are " + champions + ". Do you want to hear about more?";
+        var reprompt = "Do you want to hear about more?";
+        var header = league;
     }
-};
+
+    var shouldEndSession = false;
+    callback(session.attributes, buildSpeechletResponse(header, speechOutput, reprompt, shouldEndSession));
+}
+
+function handleYesResponse(intent, session, callback){
+    var speechOutput = "Great! Which League?";
+    var reprompt = speechOutput;
+    var shouldEndSession = false;
+
+    callback(session.attributes, buildSpeechletResponseWithoutCard(speechOutput, reprompt, shouldEndSession));
+}
+
+function handleNoResponse(intent, session, callback){
+    handleFinishSessionRequest(intent, session, callback);
+}
+
+function handleGetHelpRequest(intent, session, callback) {
+    // Ensure that session.attributes has been initialized
+    if (!session.attributes) {
+        session.attributes = {};
+    }
+
+    var speechOutput = "I can talk to you about these leagues: bundesliga, barclays, serie a, la liga, ligue un";
+    var reprompt = "Which one do you like most? bundesliga, barclays, serie a, la liga, ligue un";
+
+    var shouldEndSession = false;
+
+    callback(session.attributes, buildSpeechletResponseWithoutCard(speechOutput, reprompt, shouldEndSession));
+}
+
+function handleFinishSessionRequest(intent, session, callback) {
+    // End the session with a "Good bye!" if the user wants to quit the game
+    callback(session.attributes,
+        buildSpeechletResponseWithoutCard("Good bye! Thank you for using Game Checker", "", true));
+}
+
+
+// ------- Helper functions to build responses for Alexa -------
+
+
+function buildSpeechletResponse(title, output, repromptText, shouldEndSession) {
+    return {
+        outputSpeech: {
+            type: "PlainText",
+            text: output
+        },
+        card: {
+            type: "Simple",
+            title: title,
+            content: output
+        },
+        reprompt: {
+            outputSpeech: {
+                type: "PlainText",
+                text: repromptText
+            }
+        },
+        shouldEndSession: shouldEndSession
+    };
+}
+
+function buildSpeechletResponseWithoutCard(output, repromptText, shouldEndSession) {
+    return {
+        outputSpeech: {
+            type: "PlainText",
+            text: output
+        },
+        reprompt: {
+            outputSpeech: {
+                type: "PlainText",
+                text: repromptText
+            }
+        },
+        shouldEndSession: shouldEndSession
+    };
+}
+
+function buildResponse(sessionAttributes, speechletResponse) {
+    return {
+        version: "1.0",
+        sessionAttributes: sessionAttributes,
+        response: speechletResponse
+    };
+}
