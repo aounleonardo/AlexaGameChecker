@@ -30,10 +30,9 @@ describe("Testing The FactIntent", function(){
                     "name": "TodayIntent",
                     "slots": {
                         "League": {
-                            "name": "League",
-                            "value": "premier league"
+                            "name": "League"
                         }
-                  }
+                    }
                 }
             },
             "version": "1.0"

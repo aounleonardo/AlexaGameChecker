@@ -89,7 +89,6 @@ function onIntent(intentRequest, session, callback) {
 
     var intent = intentRequest.intent
     var intentName = intentRequest.intent.name;
-
     // dispatch custom intents to handlers here
     if(intentName == "TodayIntent"){
         handleTodayIntentResponse(intent, session, callback);
@@ -98,7 +97,7 @@ function onIntent(intentRequest, session, callback) {
     } else if (intentName == "AMAZON.NoIntent") {
         handleNoResponse(intent, session, callback);
     } else if (intentName == "AMAZON.HelpIntent") {
-        handleGetHelpResponse(intent, session, callback);
+        handleGetHelpRequest(intent, session, callback);
     } else if (intentName == "AMAZON.StopIntent") {
         handleFinishSessionRequest(intent, session, callback);
     } else if (intentName == "AMAZON.CancelIntent") {
@@ -120,9 +119,9 @@ function onSessionEnded(sessionEndedRequest, session) {
 // ------- Skill specific logic -------
 
 function getWelcomeResponse(callback) {
-    var speechOutput = "Welcome to Game Checker, you can get info about these five leagues: bundesliga, barclays, serie a, la liga, ligue un";
+    var speechOutput = "Welcome to Game Checker, you can get info about these five leagues: bundesliga, premier league, serie a, la liga, ligue un";
 
-    var reprompt = "Which one do you like most? bundesliga, barclays, serie a, la liga, ligue un";
+    var reprompt = "Which one do you like most? bundesliga, premier league, serie a, la liga, ligue un";
 
     var header = "Game Checker!";
 
@@ -137,14 +136,13 @@ function getWelcomeResponse(callback) {
 }
 
 function handleTodayIntentResponse(intent, session, callback){
+    if(!intent.slots.League.value){
+        handleTodayIntentResponseError(intent, session, callback)
+    }
     var league = intent.slots.League.value.toLowerCase();
 
     if(!leagues[league]){
-        var speechOutput = "I personally don't follow this league, try one of these: bundesliga, barclays, serie a, la liga, ligue un";
-        var reprompt = "Try asking about one of these: bundesliga, barclays, serie a, la liga, ligue un";
-        var header = "Unknown League";
-        var shouldEndSession = false;
-        callback(session.attributes, buildSpeechletResponse(header, speechOutput, reprompt, shouldEndSession));
+        handleTodayIntentResponseError(intent, session, callback)
     }
 
     var code = leagues[league].code;
@@ -155,6 +153,14 @@ function handleTodayIntentResponse(intent, session, callback){
         }
         callback(session.attributes, buildSpeechletResponseWithoutCard(speechOutput, "", true))
     });
+}
+
+function handleTodayIntentResponseError(intent, session, callback){
+    var speechOutput = "I personally don't follow this league, or maybe it does not even exist, try one of these: bundesliga, premier league, serie a, la liga, ligue un";
+    var reprompt = "Try asking about one of these: bundesliga, premier league, serie a, la liga, ligue un";
+    var header = "Unknown League";
+    var shouldEndSession = false;
+    callback(session.attributes, buildSpeechletResponse(header, speechOutput, reprompt, shouldEndSession));
 }
 
 function getJSON(code, callback){
@@ -194,8 +200,8 @@ function handleGetHelpRequest(intent, session, callback) {
         session.attributes = {};
     }
 
-    var speechOutput = "I can talk to you about these leagues: bundesliga, barclays, serie a, la liga, ligue un";
-    var reprompt = "Which one do you like most? bundesliga, barclays, serie a, la liga, ligue un";
+    var speechOutput = "I can talk to you about these leagues: bundesliga, premier league, serie a, la liga, ligue un";
+    var reprompt = "Which one do you like most? bundesliga, premier league, serie a, la liga, ligue un";
 
     var shouldEndSession = false;
 
